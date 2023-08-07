@@ -1,22 +1,11 @@
-# !/usr/bin/env python
-# -*- Coding: utf-8 -*-
-
-# @Filename: run_fsdp.py.py
-# @Author: Leo Xu
-# @Date: 2023/7/3 15:38
-# @Email: leoxc1571@163.com
-# Description:
 
 import os
 os.environ['CUDA_VISIBLE_DEVICES'] = '0,1,2,3'
 os.environ['MASTER_ADDR'] = 'localhost'
 os.environ['MASTER_PORT'] = '18017'
-# import io
-# import json
 import yaml
 import time
 import copy
-# import random
 import argparse
 import wandb
 start_time = time.strftime('%Y-%m-%d_%H-%M-%S_', time.localtime())
@@ -24,26 +13,12 @@ start_time = time.strftime('%Y-%m-%d_%H-%M-%S_', time.localtime())
 import warnings
 import numpy as np
 from tqdm import tqdm
-# from rdkit import RDLogger
 
 import torch
-# import torch.nn as nn
 import torch.optim as optim
 import torch.distributed as dist
 import torch.multiprocessing as mp
 from torch.nn.parallel import DistributedDataParallel
-# from torch.distributed.fsdp import FullyShardedDataParallel as FSDP
-# from torch.distributed.fsdp.fully_sharded_data_parallel import (
-# FullyShardedDataParallel as FSDP,
-# CPUOffload,
-# BackwardPrefetch,
-# )
-# from torch.distributed.fsdp.wrap import (
-# default_auto_wrap_policy,
-# enable_wrap,
-# wrap,
-# )
-# from torch.optim.lr_scheduler import StepLR
 from torch.utils.data.distributed import DistributedSampler
 from torch.utils.tensorboard import SummaryWriter
 from torch_geometric.loader import DataLoader
@@ -59,7 +34,6 @@ signal(SIGPIPE,SIG_DFL)
 # os.environ["NCCL_DEBUG_SUBSYS"] = "COLL"
 # os.environ["NCCL_DEBUG_FILE"] = "/output/nccl_logs.txt"
 CURRENT_PATH = os.path.dirname(os.path.realpath(__file__))
-
 warnings.filterwarnings('ignore')
 
 
@@ -166,8 +140,6 @@ def main(rank, world_size, args):
     print(len(dataset.data.x))
     split_idx = dataset.get_split_idx(len(dataset.data.n_nodes), train_size=dataset_config['train_size'],
                                       valid_size=dataset_config['valid_size'], seed=model_config['seed'])
-    # mean, std = dataset.retrive_context_prop(model_config)
-
     if model_config['train_subset']:
         subset_ratio = 0.1
         subset_idx = torch.randperm(len(split_idx['train']))[:int(subset_ratio * len(split_idx['train']))]
@@ -219,12 +191,9 @@ def main(rank, world_size, args):
         gradnorm_queue.add(3000)
 
     optimizer = optim.Adam(model.parameters(), lr=model_config['lr'], amsgrad=True, weight_decay=1e-12)
-    # scheduler = StepLR(optimizer, step_size=3000, gamma=0.25)
-    # evaluator = evaluator_map[model_config['gen_type']]
 
     if model_config['load_ckpt']:
         optimizer.load_state_dict(ckpt['optimizer_state_dict'])
-        # scheduler.load_state_dict(ckpt['scheduler_state_dict'])
 
     log_dir = os.path.join(model_config['log_dir'], model_name + '_' + dataset_name)
     if not os.path.exists(log_dir) and rank == 0:
@@ -316,7 +285,6 @@ def main(rank, world_size, args):
             if model_config['enable_tb']:
                 tb_writer.add_scalar("evaluation/train", train_loss, epoch)
                 tb_writer.add_scalar("evaluation/valid", valid_loss, epoch)
-        # scheduler.step()
 
     if rank == 0:
         best_model = model
@@ -338,7 +306,7 @@ def main(rank, world_size, args):
 if __name__ == "__main__":
     # load models and data config
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model", type=str, default='equidiffusion', action='store',
+    parser.add_argument("--model", type=str, default='gfmdiff', action='store',
                         help="molecular graph generation models")
     parser.add_argument("--data", type=str, default="qm9", action='store',
                         help="the training data")

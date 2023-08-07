@@ -1,148 +1,30 @@
-# !/usr/bin/env python
-# -*- Coding: utf-8 -*-
-
-# @Filename: sample_eval.py
-# @Author: Leo Xu
-# @Date: 2023/2/17 15:17
-# @Email: leoxc1571@163.com
-# Description:
 
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '6,7'
+os.environ['CUDA_VISIBLE_DEVICES'] = '6'
 os.environ['MASTER_ADDR'] = 'localhost'
 os.environ['MASTER_PORT'] = '10125'
-import io
-import json
 import yaml
 import time
-import copy
-import random
 import argparse
 import wandb
 start_time = time.strftime('%m-%d-%H-%M-%S', time.localtime())
 
 import warnings
-import numpy as np
 from tqdm import tqdm
-from rdkit import RDLogger
 
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
 import torch.distributed as dist
 import torch.multiprocessing as mp
 from torch.nn.parallel import DistributedDataParallel
 
-from torch.utils.data.distributed import DistributedSampler
-from torch_geometric.loader import DataLoader
 from models import model_map
-from data import dataset_map
-from evaluator import analyze_stability_for_molecules, check_stability
-from utils import init_seeds, EMA, BasicMolecularMetrics
-import utils.visualization as vis
+from evaluator import analyze_stability_for_molecules
+from utils import init_seeds
 
 CURRENT_PATH = os.path.dirname(os.path.realpath(__file__))
 OUTPUT_PATH = os.path.join(CURRENT_PATH, 'output/sample')
 
 warnings.filterwarnings('ignore')
-
-
-def sample_various_mol(model, model_config, dataset_config, device, n_samples=100, batch_size=100, context=None):
-    batch_size = min(n_samples, batch_size)
-    model.eval()
-    pos, onehot, atom_num, node_mask = model.sample(batch_size, dataset_config['max_n_nodes'], device, context)
-
-    vis.save_xyz_file(os.path.join(OUTPUT_PATH, 'various/{dataset}_{date}/'.
-                                   format(dataset=dataset_config['name'], date=start_time)),
-                      one_hot=onehot, charges=atom_num, positions=pos,
-                      dataset_info=dataset_config, node_mask=node_mask)
-
-
-def sample_stable_mol(model, model_config, dataset_config, device, context=None, num_attempt=50, calc_mol=False):
-    n_samples = model_config['n_samples']
-    batch_size = min(n_samples, model_config['sample_batch_size'])
-    model.eval()
-    pos, onehot, atom_num, node_mask = model.sample(batch_size, dataset_config['max_n_nodes'], device, context)
-    counter = 0
-    smiles_list, mol_list = None, None
-    for i in range(num_attempt):
-        num_atoms = int(node_mask[i:i+1].sum().item())
-        atom_type = onehot[i:i+1, :num_atoms].argmax(2).squeeze(0).cpu().detach().numpy()
-        mol_stable = check_stability(pos, atom_type, dataset_config)[0]
-
-        num_remaining_attempts = num_attempt - i - 1
-        num_remaining_samples = n_samples - counter
-        if calc_mol:
-            metrics = BasicMolecularMetrics(dataset_config)
-            pos_valid = pos[-1].cpu().detach()
-            onehot_valid = onehot[-1].argmax(1).cpu().detach()
-            valid, validity = metrics.compute_validity([(pos_valid, onehot_valid)])
-            if validity == 1:
-                smiles_list, mol_list = metrics.compute_mol([(pos_valid, onehot_valid)])
-            else:
-                smiles_list, mol_list = None, None
-        if mol_stable or num_remaining_attempts <= num_remaining_samples:
-            if mol_stable:
-                print('Found stable mol.')
-            vis.save_xyz_file(
-                os.path.join(OUTPUT_PATH, 'stable/{dataset}_{date}/'.
-                             format(dataset=dataset_config['name'], date=start_time)),
-                one_hot=onehot[i:i+1], charges=atom_num[i:i+1], positions=pos[i:i+1],
-                dataset_info=dataset_config, node_mask=node_mask[i:i+1])
-            counter += 1
-            if counter >= n_samples:
-                break
-
-
-def sample_vis_chain(model, model_config, dataset_config, device, context=None,
-                     num_chain=100, num_attempt=10, calc_mol=False):
-    for i in range(num_chain):
-        path = os.path.join(OUTPUT_PATH, 'chain/{dataset}_{date}/{chain}/'.
-                            format(dataset=dataset_config['name'], date=start_time, chain=i))
-        n_samples = 1
-        if dataset_config['name'] == 'qm9':
-            n_nodes = 19
-        elif dataset_config['name'] == 'drugs':
-            n_nodes = 44
-        else:
-            raise ValueError('Unrecognized dataset: %s' % dataset_config['name'])
-
-        smiles_list, mol_list = None, None
-        for j in range(num_attempt):
-            chain = model.sample_chain(n_samples, n_nodes, device, context, fix_noise=False, keep_frames=100)
-            chain = chain[torch.arange(chain.size(0) - 1, -1, -1)]
-            chain = torch.cat([chain, chain[-1:].repeat(10, 1, 1)], dim=0)
-            pos = chain[-1:, :, 0:3]
-            onehot = chain[-1:, :, 3:-1]
-            onehot = torch.argmax(onehot, dim=2)
-            atom_type = onehot.squeeze(0).cpu().detach().numpy()
-            pos_squeeze = pos.squeeze(0).cpu().detach().numpy()
-            mol_stable = check_stability(pos_squeeze, atom_type, dataset_config)[0]
-
-            pos = chain[:, :, 0:3]
-            onehot = chain[:, :, 3:-1]
-            onehot = F.one_hot(torch.argmax(onehot, dim=2), num_classes=len(dataset_config['atom_decoder']))
-            charges = torch.round(chain[:, :, -1:]).long()
-            metrics = BasicMolecularMetrics(dataset_config)
-            if calc_mol:
-                pos_valid = pos[-1].cpu().detach()
-                onehot_valid = onehot[-1].argmax(1).cpu().detach()
-                valid, validity = metrics.compute_validity([(pos_valid, onehot_valid)])
-                if validity == 1:
-                    smiles_list, mol_list = metrics.compute_mol([(pos_valid, onehot_valid)])
-                else:
-                    smiles_list, mol_list = None, None
-
-            if mol_stable:
-                print("Found stable molecule to visualize!")
-                break
-            elif j == num_attempt - 1:
-                print("Did not find stable molecule, showing last sample...")
-
-        vis.save_xyz_file(path, one_hot=onehot, charges=charges, positions=pos, dataset_info=dataset_config,
-                          id_from=0, name='chain', smiles_list=smiles_list, mol_list=mol_list, i=i)
-        vis.visualize_chain_uncertainty(path, dataset_config, spheres_3d=True)
-
 
 
 def analyze(model, model_config, dataset_config, device, n_samples=10000, batch_size=50, rank=0):
@@ -193,19 +75,8 @@ def main(rank, world_size, args):
     ckpt = torch.load(args.ckpt_dir)
     model.load_state_dict(ckpt['model_state_dict'])
     model = DistributedDataParallel(model, device_ids=[rank])
-    # if model_config['ema_decay'] > 0:
-    #     model.load_state_dict(ckpt["model_ema"])
-    # else:
-    #     model.load_state_dict(ckpt['model_state_dict'])
     num_params = sum(p.numel() for p in model.parameters())
     print(f'Model successfully loaded, Number of Params: {num_params}')
-
-    # print("Generating handful of molecules")
-    # sample_various_mol(model, model_config, dataset_config, device)
-
-    # print("Visualizing molecules...")
-    # sample_vis_chain(model, model_config, dataset_config, device, context=None, num_chain=10, num_attempt=10, calc_mol=True)
-    # vis.visualize(os.path.join(OUTPUT_PATH, 'stable'), dataset_config, max_num=100, spheres_3d=True)
 
     dist.barrier()
     print('Analyzing...') if rank == 0 else None
@@ -233,7 +104,7 @@ def main(rank, world_size, args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model", type=str, default='equidiffusion', action='store',
+    parser.add_argument("--model", type=str, default='gfmdiff', action='store',
                         help="molecular graph generation models")
     parser.add_argument("--data", type=str, default="qm9", action='store',
                         help="the training data")

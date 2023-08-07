@@ -139,7 +139,6 @@ def main(rank, world_size, args):
     print(len(dataset.data.x))
     split_idx = dataset.get_split_idx(len(dataset.data.n_nodes), train_size=dataset_config['train_size'],
                                       valid_size=dataset_config['valid_size'], seed=model_config['seed'])
-    # mean, std = dataset.retrive_context_prop(model_config)
 
     if model_config['train_subset']:
         subset_ratio = 0.1
@@ -192,12 +191,8 @@ def main(rank, world_size, args):
         gradnorm_queue.add(3000)
 
     optimizer = optim.Adam(model.parameters(), lr=model_config['lr'], amsgrad=True, weight_decay=1e-12)
-    # scheduler = StepLR(optimizer, step_size=3000, gamma=0.25)
-    # evaluator = evaluator_map[model_config['gen_type']]
-
     if model_config['load_ckpt']:
         optimizer.load_state_dict(ckpt['optimizer_state_dict'])
-        # scheduler.load_state_dict(ckpt['scheduler_state_dict'])
 
     log_dir = os.path.join(model_config['log_dir'], model_name + '_' + dataset_name)
     if not os.path.exists(log_dir) and rank == 0:
@@ -289,7 +284,6 @@ def main(rank, world_size, args):
             if model_config['enable_tb']:
                 tb_writer.add_scalar("evaluation/train", train_loss, epoch)
                 tb_writer.add_scalar("evaluation/valid", valid_loss, epoch)
-        # scheduler.step()
 
     if rank == 0:
         best_model = model

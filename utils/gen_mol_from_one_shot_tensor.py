@@ -25,8 +25,6 @@ def construct_mol(x, A, atomic_num_list):
     for start, end in zip(*np.nonzero(adj)):
         if start > end:
             mol.AddBond(int(start), int(end), bond_decoder_m[adj[start, end]])
-            # add formal charge to atom: e.g. [O+], [N+] [S+]
-            # not support [O-], [N-] [S-]  [NH+] etc.
             flag, atomid_valence = check_valency(mol)
             if flag:
                 continue

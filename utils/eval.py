@@ -43,6 +43,13 @@ bonds3 = {'C': {'C': 120, 'N': 116, 'O': 113},
           'O': {'C': 113}}
 
 
+stdv = {'H': 5, 'C': 1, 'N': 1, 'O': 2, 'F': 3}
+margin1, margin2, margin3 = 10, 5, 3
+allowed_bonds = {'H': 1, 'C': 4, 'N': 3, 'O': 2, 'F': 1, 'B': 3, 'Al': 3,
+                 'Si': 4, 'P': [3, 5],
+                 'S': 4, 'Cl': 1, 'As': 3, 'Br': 1, 'I': 1, 'Hg': [1, 2],
+                 'Bi': [3, 5]}
+
 def print_table(bonds_dict):
     letters = ['H', 'C', 'O', 'N', 'P', 'S', 'F', 'Si', 'Cl', 'Br', 'I']
 
@@ -83,16 +90,8 @@ def check_consistency_bond_dictionaries():
                     f'{bond} != {bond_check} for {atom1}, {atom2}')
 
 
-stdv = {'H': 5, 'C': 1, 'N': 1, 'O': 2, 'F': 3}
-margin1, margin2, margin3 = 10, 5, 3
-allowed_bonds = {'H': 1, 'C': 4, 'N': 3, 'O': 2, 'F': 1, 'B': 3, 'Al': 3,
-                 'Si': 4, 'P': [3, 5],
-                 'S': 4, 'Cl': 1, 'As': 3, 'Br': 1, 'I': 1, 'Hg': [1, 2],
-                 'Bi': [3, 5]}
-
-
 def get_bond_order(atom1, atom2, distance, check_exists=False):
-    distance = 100 * distance  # We change the metric
+    distance = 100 * distance
 
     if check_exists:
         if atom1 not in bonds1:
@@ -109,10 +108,10 @@ def get_bond_order(atom1, atom2, distance, check_exists=False):
                 if atom1 in bonds3 and atom2 in bonds3[atom1]:
                     thr_bond3 = bonds3[atom1][atom2] + margin3
                     if distance < thr_bond3:
-                        return 3        # Triple
-                return 2            # Double
-        return 1                # Single
-    return 0                    # No bond
+                        return 3
+                return 2
+        return 1
+    return 0
 
 
 def single_bond_only(threshold, length, margin1=5):
@@ -125,8 +124,6 @@ def geom_predictor(p, l, margin1=5, limit_bonds_to_one=False):
     """ p: atom pair (couple of str)
         l: bond length (float)"""
     bond_order = get_bond_order(p[0], p[1], l, check_exists=True)
-
-    # If limit_bonds_to_one is enabled, every bond type will return 1.
     if limit_bonds_to_one:
         return 1 if bond_order > 0 else 0
     else:

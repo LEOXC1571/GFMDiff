@@ -150,7 +150,7 @@ def get_bond(name):
         ], dtype=torch.long)
     else:
         raise NotImplementedError('Unsupported dataset')
-    margin = torch.tensor([0.01, 0.005, 0.003])
+    margin = torch.tensor([0.1, 0.05, 0.03])
     return bond.permute(1, 2, 0) + margin.unsqueeze(0).unsqueeze(0), bond_mask.permute(1, 2, 0)
 
 

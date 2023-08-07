@@ -1,46 +1,28 @@
-# !/usr/bin/env python
-# -*- Coding: utf-8 -*-
-
-# @Filename: sample_generator.py
-# @Author: Leo Xu
-# @Date: 2023/7/6 9:29
-# @Email: leoxc1571@163.com
-# Description:
-
 
 import os
 os.environ['CUDA_VISIBLE_DEVICES'] = '6'
 os.environ['MASTER_ADDR'] = 'localhost'
 os.environ['MASTER_PORT'] = '10452'
-import io
-import json
 import yaml
 import time
-import copy
-import random
 import argparse
 import wandb
 start_time = time.strftime('%m-%d-%H-%M-%S', time.localtime())
 
 import warnings
-import numpy as np
 from tqdm import tqdm
 from rdkit import Chem
 from rdkit.Chem import Draw
 
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
 import torch.distributed as dist
 import torch.multiprocessing as mp
 from torch.nn.parallel import DistributedDataParallel
 
-from torch.utils.data.distributed import DistributedSampler
-from torch_geometric.loader import DataLoader
 from models import model_map
-from data import dataset_map
 from evaluator import analyze_stability_for_molecules, check_stability
-from utils import init_seeds, EMA, BasicMolecularMetrics
+from utils import init_seeds, BasicMolecularMetrics
 import utils.visualization as vis
 
 CURRENT_PATH = os.path.dirname(os.path.realpath(__file__))
@@ -166,25 +148,6 @@ def sample_vis_chain(model, model_config, dataset_config, device, context=None,
         vis.visualize_chain_uncertainty(path, dataset_config, spheres_3d=True)
 
 
-def analyze(model, model_config, dataset_config, device, n_samples=10000, batch_size=50, rank=0):
-    model.eval()
-    disable_tqdm = rank != 0
-    batch_size = min(batch_size, n_samples)
-    molecules = {'pos': [], 'onehot': [], 'node_mask': []}
-    context = None
-    tqdm_bar = tqdm(range(int(n_samples / batch_size)), desc="Iteration", disable=disable_tqdm)
-    for i in tqdm_bar:
-        with torch.no_grad():
-            pos, onehot, atom_num, degree, node_mask = model.module.sample(batch_size, dataset_config['max_n_nodes'],
-                                                                           device, context)
-            molecules['pos'].append(pos.detach().cpu())
-            molecules['onehot'].append(onehot.detach().cpu())
-            molecules['node_mask'].append(node_mask.detach().cpu())
-    molecules = {key: torch.cat(molecules[key], dim=0) for key in molecules}
-    validity, rdkit_metrics, rdkit_unique = analyze_stability_for_molecules(molecules, dataset_config)
-    return validity, rdkit_metrics, rdkit_unique
-
-
 def main(rank, world_size, args):
     model_name = args.model
     dataset_name = args.data
@@ -214,10 +177,6 @@ def main(rank, world_size, args):
     ckpt = torch.load(args.ckpt_dir)
     model.load_state_dict(ckpt['model_state_dict'])
     model = DistributedDataParallel(model, device_ids=[rank])
-    # if model_config['ema_decay'] > 0:
-    #     model.load_state_dict(ckpt["model_ema"])
-    # else:
-    #     model.load_state_dict(ckpt['model_state_dict'])
     num_params = sum(p.numel() for p in model.parameters())
     print(f'Model successfully loaded, Number of Params: {num_params}')
 
@@ -232,33 +191,12 @@ def main(rank, world_size, args):
         print("Visualizing molecules...") if rank == 0 else None
         sample_vis_chain(model, model_config, dataset_config, device, context=None, num_chain=10, num_attempt=10, calc_mol=True)
         vis.visualize(os.path.join(OUTPUT_PATH, 'stable'), dataset_config, max_num=100, spheres_3d=True)
-
-    # print('Analyzing...') if rank == 0 else None
-    # validity, rdkit_metrics, rdkit_unique = analyze(model, model_config, dataset_config, device,
-    #                                                 n_samples=10000/world_size, batch_size=50, rank=rank)
-    # validity, rdkit_metrics = validity.to(device), rdkit_metrics.to(device)
-    # validity_gather_list = [torch.zeros_like(validity) for _ in range(world_size)]
-    # rdkit_gather_list = [torch.zeros_like(rdkit_metrics) for _ in range(world_size)]
-    # dist.all_gather(validity_gather_list, validity)
-    # dist.all_gather(rdkit_gather_list, rdkit_metrics)
-    # validity = torch.cat(validity_gather_list, dim=0).mean(0) if rank == 0 else None
-    # rdkit_metrics = torch.cat(rdkit_gather_list, dim=0).mean(0) if rank == 0 else None
-    # analyze_dict = {
-    #     'mol_stale': validity[0].item(),
-    #     'atom_stable': validity[1].item(),
-    #     'rdkit_validity': rdkit_metrics[0].item(),
-    #     'rdkit_uniqueness': rdkit_metrics[1].item(),
-    #     'rdkit_novelty': rdkit_metrics[2].item()
-    # } if rank == 0 else None
-    # if use_wandb and rank == 0:
-    #     wandb.log(analyze_dict)
     torch.distributed.destroy_process_group()
-    # print(analyze_dict)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model", type=str, default='cadiff', action='store',
+    parser.add_argument("--model", type=str, default='gfmdiff', action='store',
                         help="molecular graph generation models")
     parser.add_argument("--data", type=str, default="qm9", action='store',
                         help="the training data")
