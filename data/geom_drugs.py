@@ -12,8 +12,9 @@ from torch_geometric.data import InMemoryDataset, Data
 
 from utils import drug2graph
 
-
 CURRENT_PATH = os.path.dirname(os.path.realpath(__file__))
+
+
 class GEOM_Drugs(InMemoryDataset):
     def __init__(self,
                  root=None,
@@ -25,7 +26,10 @@ class GEOM_Drugs(InMemoryDataset):
         self.root = root
         self.mol2graph = mol2graph
         self.remove_hs = False
-        random.seed(model_config['seed'])
+        self.train_size = dataset_config['train_size']
+        self.valid_size = dataset_config['valid_size']
+        self.seed = model_config['seed']
+        random.seed(self.seed)
         self.num_conf = dataset_config['num_conf']
         super(GEOM_Drugs, self).__init__(root, transform, pre_transform)
         self.transform, self.pre_transform = transform, pre_transform
@@ -96,18 +100,19 @@ class GEOM_Drugs(InMemoryDataset):
         np.save(os.path.join(self.processed_dir, 'smiles_list.npy'), smiles_list)
         print("Data preprocessing finished!")
 
-    def get_split_idx(self, data_size, train_size, valid_size, seed):
-        ids = shuffle(range(data_size), random_state=seed)
-        train_idx, val_idx, test_idx = torch.tensor(ids[:train_size]), torch.tensor(
-            ids[train_size:train_size + valid_size]), torch.tensor(ids[train_size + valid_size:])
+    def get_split_idx(self, data_size):
+        ids = shuffle(range(data_size), random_state=self.seed)
+        train_idx, val_idx, test_idx = torch.tensor(ids[:self.train_size]), torch.tensor(
+            ids[self.train_size:self.train_size + self.valid_size]), torch.tensor(
+            ids[self.train_size + self.valid_size:])
         split_dict = {'train': train_idx, 'valid': val_idx, 'test': test_idx}
         return split_dict
 
 
 if __name__ == "__main__":
-    model_config = yaml.load(open(os.path.join(CURRENT_PATH, '../config/model/equidiffusion.yaml'), "r"),
+    model_config = yaml.load(open(os.path.join(CURRENT_PATH, '../config/model/gfmdiff.yaml'), "r"),
                              Loader=yaml.FullLoader)
     dataset_config = yaml.load(open(os.path.join(CURRENT_PATH, '../config/dataset/drugs.yaml'), "r"),
                                Loader=yaml.FullLoader)
-    root = '../../../data/molgen/geom_drugs'
+    root = '../molgen/geom_drugs'
     dataset = GEOM_Drugs(root, model_config, dataset_config)

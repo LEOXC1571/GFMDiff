@@ -19,7 +19,6 @@ import torch.optim as optim
 import torch.distributed as dist
 import torch.multiprocessing as mp
 from torch.nn.parallel import DistributedDataParallel
-# from torch.optim.lr_scheduler import StepLR
 from torch.utils.data.distributed import DistributedSampler
 from torch.utils.tensorboard import SummaryWriter
 from torch_geometric.loader import DataLoader
@@ -35,8 +34,34 @@ signal(SIGPIPE,SIG_DFL)
 # os.environ["NCCL_DEBUG_SUBSYS"] = "COLL"
 # os.environ["NCCL_DEBUG_FILE"] = "/output/nccl_logs.txt"
 CURRENT_PATH = os.path.dirname(os.path.realpath(__file__))
-
 warnings.filterwarnings('ignore')
+
+
+# def train(model, loader, optimizer, device, model_config, disable_tqdm, model_ema, ema, gradnorm_queue=None, use_wandb=False):
+#     model.train()
+#     nll_epoch, n_samples = [], 0
+#     iter_size = 16
+#     tqdm_bar = tqdm(loader, desc="Iteration", disable=disable_tqdm)
+#     optimizer.zero_grad()
+#     for step, batch in enumerate(tqdm_bar):
+#         batch = batch.to(device)
+#         neg_log_pxh, reg_term, mean_abs_z = model(batch, device)
+#         loss = (neg_log_pxh + 0.001 * reg_term) / iter_size
+#         loss.backward()
+#         if model_config['clip_grad']:
+#             grad_norm = gradient_clipping(model, gradnorm_queue)
+#         else:
+#             grad_norm = 0.
+#         if (step + 1) % iter_size == 0:
+#             optimizer.step()
+#             optimizer.zero_grad()
+#         if model_config['ema_decay'] > 0:
+#             ema.update_model_average(model_ema, model)
+#         nll_epoch.append(neg_log_pxh.item())
+#         wandb.log({"Batch NLL": neg_log_pxh.item()}, commit=True) if not disable_tqdm and use_wandb else None
+#     nll_epoch = np.mean(nll_epoch)
+#     wandb.log({"Train Epoch NLL": nll_epoch}, commit=True) if not disable_tqdm and use_wandb else None
+#     return nll_epoch
 
 
 def train(model, loader, optimizer, device, model_config, disable_tqdm, model_ema, ema, gradnorm_queue=None, use_wandb=False):
@@ -137,8 +162,7 @@ def main(rank, world_size, args):
                             model_config=model_config,
                             dataset_config=dataset_config)
     print(len(dataset.data.x))
-    split_idx = dataset.get_split_idx(len(dataset.data.n_nodes), train_size=dataset_config['train_size'],
-                                      valid_size=dataset_config['valid_size'], seed=model_config['seed'])
+    split_idx = dataset.get_split_idx(len(dataset.data.n_nodes))
 
     if model_config['train_subset']:
         subset_ratio = 0.1

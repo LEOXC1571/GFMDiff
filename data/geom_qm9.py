@@ -13,7 +13,6 @@ from sklearn.utils import shuffle
 
 from utils import mol2graph
 
-
 CURRENT_PATH = os.path.dirname(os.path.realpath(__file__))
 HAR2EV = 27.211386246
 KCALMOL2EV = 0.04336414
@@ -23,12 +22,14 @@ conversion = torch.tensor([
     1., KCALMOL2EV, KCALMOL2EV, KCALMOL2EV, KCALMOL2EV, 1., 1., 1.
 ])
 
+
 def mol2smiles(mol):
     try:
         Chem.SanitizeMol(mol)
     except ValueError:
         return None
     return Chem.MolToSmiles(mol)
+
 
 class GEOM_QM9(InMemoryDataset):
     r"""The QM9 dataset from the `"MoleculeNet: A Benchmark for Molecular
@@ -127,10 +128,14 @@ class GEOM_QM9(InMemoryDataset):
                  pre_transform=None):
         self.root = root
         self.mol2graph = mol2graph
+        self.conditional = model_config['context']
+        self.train_size = dataset_config['train_size']
+        self.valid_size = dataset_config['valid_size']
         self.remove_hs = False
         super().__init__(root, transform, pre_transform)
         self.transform, self.pre_transform = transform, pre_transform
-        random.seed(model_config['seed'])
+        self.seed = model_config['seed']
+        random.seed(self.seed)
         self.data, self.slices = torch.load(self.processed_paths[0])
 
     @property
@@ -216,10 +221,24 @@ class GEOM_QM9(InMemoryDataset):
         smiles_list = np.array(smiles_list)
         np.save(os.path.join(self.processed_dir, 'smiles_list.npy'), smiles_list)
 
-    def get_split_idx(self, data_size, train_size, valid_size, seed):
-        ids = shuffle(range(data_size), random_state=seed)
-        train_idx, val_idx, test_idx = torch.tensor(ids[:train_size]), torch.tensor(
-            ids[train_size:train_size + valid_size]), torch.tensor(ids[train_size + valid_size:])
+    def get_split_idx(self, data_size, task='gen'):
+        ids = shuffle(range(data_size), random_state=self.seed)
+        if not self.conditional:
+            train_idx, val_idx, test_idx = torch.tensor(ids[:self.train_size]), torch.tensor(
+                ids[self.train_size:self.train_size + self.valid_size]), torch.tensor(
+                ids[self.train_size + self.valid_size:])
+        else:
+            if task == 'gen':
+                half_train_size = int(self.train_size / 2)
+                train_idx, val_idx, test_idx = torch.tensor(ids[half_train_size:self.train_size]), torch.tensor(
+                    ids[self.train_size:self.train_size + self.valid_size]), torch.tensor(
+                    ids[self.train_size + self.valid_size:])
+            elif task == 'prop':
+                half_train_size = int(self.train_size / 2)
+                train_idx, val_idx, test_idx = torch.tensor(ids[:half_train_size]), torch.tensor(
+                    ids[self.train_size:self.train_size + self.valid_size]), torch.tensor(
+                    ids[self.train_size + self.valid_size:])
+
         split_dict = {'train': train_idx, 'valid': val_idx, 'test': test_idx}
         return split_dict
 
@@ -245,6 +264,5 @@ if __name__ == "__main__":
                              Loader=yaml.FullLoader)
     dataset_config = yaml.load(open(os.path.join(CURRENT_PATH, '../config/dataset/qm9.yaml'), "r"),
                                Loader=yaml.FullLoader)
-    root = '../../../../../data/molgen/geom_qm9'
+    root = '../data/molgen/geom_qm9'
     dataset = GEOM_QM9(root, model_config, dataset_config)
-

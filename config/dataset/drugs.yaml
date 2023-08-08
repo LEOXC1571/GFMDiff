@@ -1,5 +1,5 @@
 name: drugs
-root: data/molgen/geom_drugs
+root: molgen/geom_drugs
 
 num_conf: 1
 remove_hs: False
