@@ -1,5 +1,5 @@
 name: qm9
-root: molgen/geom_qm9
+root: ../../data/molgen/geom_qm9
 remove_hs: False
 
 node_nf: 5

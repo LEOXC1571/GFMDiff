@@ -45,7 +45,7 @@ class DistributionProperty:
     def __init__(self, dataloader, properties, num_bins=1000, normalizer=None):
         self.num_bins = num_bins
         self.distributions = {}
-        self.properties_list = properties
+        self.properties = properties
         for prop in properties:
             self.distributions[prop] = {}
             self._create_prob_dist(dataloader.dataset.data.n_nodes,
@@ -54,8 +54,13 @@ class DistributionProperty:
 
         self.normalizer = normalizer
 
-    def set_normalizer(self, normalizer):
-        self.normalizer = normalizer
+    def set_normalizer(self, mean, std, model_config):
+        property_norm = {}
+        for key in model_config['context_col']:
+            property_norm[key] = {}
+            property_norm[key]['mean'] = mean
+            property_norm[key]['std'] = std
+        self.normalizer = property_norm
 
     def _create_prob_dist(self, nodes_arr, values, distribution):
         min_nodes, max_nodes = torch.min(nodes_arr), torch.max(nodes_arr)
@@ -84,8 +89,8 @@ class DistributionProperty:
     def normalize_tensor(self, tensor, prop):
         assert self.normalizer is not None
         mean = self.normalizer[prop]['mean']
-        mad = self.normalizer[prop]['mad']
-        return (tensor - mean) / mad
+        std = self.normalizer[prop]['std']
+        return (tensor - mean) / std
 
     def sample(self, n_nodes=19):
         vals = []

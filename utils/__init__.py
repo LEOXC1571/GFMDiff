@@ -4,7 +4,7 @@ from .gen_mol_from_one_shot_tensor import gen_mol_from_one_shot_tensor
 from .qm9tograph import mol2graph
 from .drugs2graph import drug2graph
 from .distribution import DistributionNodes, DistributionProperty
-from .train_utils import gradient_clipping, EMA, Queue, init_seeds
+from .train_utils import gradient_clipping, EMA, Queue, init_seeds, calc_prop_norm
 from .rdkit_functions import BasicMolecularMetrics
 from .logger import write_log
 
@@ -22,5 +22,6 @@ __all__ = [
     'Queue',
     'BasicMolecularMetrics',
     'init_seeds',
-    'write_log'
+    'write_log',
+    'calc_prop_norm'
 ]

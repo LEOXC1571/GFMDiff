@@ -314,7 +314,11 @@ class GFMDiff(nn.Module):
         max_cog = torch.sum(pos, dim=1, keepdim=True).abs().max().item()
         if max_cog > 5e-2:
             pos = remove_mean_with_mask(pos, node_mask)
-        return pos, onehot_x, atom_num, degree, node_mask
+
+        if self.context:
+            return pos, onehot_x, atom_num, degree, node_mask, pair_mask, context
+        else:
+            return pos, onehot_x, atom_num, degree, node_mask
 
     def sample_p_zs_given_zt(self, s, t, zt, node_mask, pair_mask, context, fix_noise=False):
         gamma_s = self.gamma(s)

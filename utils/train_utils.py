@@ -61,3 +61,10 @@ def gradient_clipping(flow, gradnorm_queue):
         gradnorm_queue.add(float(grad_norm))
 
     return grad_norm
+
+
+def calc_prop_norm(loader, model_config):
+    context_col = model_config['context_col']
+    prop = loader.data.y[:, context_col]
+    mean, std = prop.mean(), prop.std()
+    return mean, std

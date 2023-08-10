@@ -24,8 +24,34 @@ def unsorted_segment_mean(data, segment_ids, num_segments):
     return result / count.clamp(min=1)
 
 
+edges_dic = {}
+
+
+def get_adj_matrix(n_nodes, batch_size, device):
+    if n_nodes in edges_dic:
+        edges_dic_b = edges_dic[n_nodes]
+        if batch_size in edges_dic_b:
+            return edges_dic_b[batch_size]
+        else:
+            # get edges for a single sample
+            rows, cols = [], []
+            for batch_idx in range(batch_size):
+                for i in range(n_nodes):
+                    for j in range(n_nodes):
+                        rows.append(i + batch_idx * n_nodes)
+                        cols.append(j + batch_idx * n_nodes)
+
+    else:
+        edges_dic[n_nodes] = {}
+        return get_adj_matrix(n_nodes, batch_size, device)
+
+    edges = [torch.LongTensor(rows).to(device), torch.LongTensor(cols).to(device)]
+    return edges
+
+
 class E_GCL(nn.Module):
-    def __init__(self, input_nf, output_nf, hidden_nf, edges_in_d=0, nodes_att_dim=0, act_fn=nn.ReLU(), recurrent=True, coords_weight=1.0, attention=False, clamp=False, norm_diff=False, tanh=False):
+    def __init__(self, input_nf, output_nf, hidden_nf, edges_in_d=0, nodes_att_dim=0, act_fn=nn.ReLU(), recurrent=True,
+                 coords_weight=1.0, attention=False, clamp=False, norm_diff=False, tanh=False):
         super(E_GCL, self).__init__()
         input_edge = input_nf * 2
         self.coords_weight = coords_weight
@@ -56,9 +82,8 @@ class E_GCL(nn.Module):
         coord_mlp.append(layer)
         if self.tanh:
             coord_mlp.append(nn.Tanh())
-            self.coords_range = nn.Parameter(torch.ones(1))*3
+            self.coords_range = nn.Parameter(torch.ones(1)) * 3
         self.coord_mlp = nn.Sequential(*coord_mlp)
-
 
         if self.attention:
             self.att_mlp = nn.Sequential(
@@ -93,17 +118,17 @@ class E_GCL(nn.Module):
         trans = coord_diff * self.coord_mlp(edge_feat)
         trans = torch.clamp(trans, min=-100, max=100)
         agg = unsorted_segment_mean(trans, row, num_segments=coord.size(0))
-        coord += agg*self.coords_weight
+        coord += agg * self.coords_weight
         return coord
 
     def coord2radial(self, edge_index, coord):
         row, col = edge_index
         coord_diff = coord[row] - coord[col]
-        radial = torch.sum((coord_diff)**2, 1).unsqueeze(1)
+        radial = torch.sum((coord_diff) ** 2, 1).unsqueeze(1)
 
         if self.norm_diff:
             norm = torch.sqrt(radial) + 1
-            coord_diff = coord_diff/(norm)
+            coord_diff = coord_diff / (norm)
 
         return radial, coord_diff
 
@@ -118,8 +143,10 @@ class E_GCL(nn.Module):
 
 
 class E_GCL_mask(E_GCL):
-    def __init__(self, input_nf, output_nf, hidden_nf, edges_in_d=0, nodes_attr_dim=0, act_fn=nn.ReLU(), recurrent=True, coords_weight=1.0, attention=False):
-        E_GCL.__init__(self, input_nf, output_nf, hidden_nf, edges_in_d=edges_in_d, nodes_att_dim=nodes_attr_dim, act_fn=act_fn, recurrent=recurrent, coords_weight=coords_weight, attention=attention)
+    def __init__(self, input_nf, output_nf, hidden_nf, edges_in_d=0, nodes_attr_dim=0, act_fn=nn.ReLU(), recurrent=True,
+                 coords_weight=1.0, attention=False):
+        E_GCL.__init__(self, input_nf, output_nf, hidden_nf, edges_in_d=edges_in_d, nodes_att_dim=nodes_attr_dim,
+                       act_fn=act_fn, recurrent=recurrent, coords_weight=coords_weight, attention=attention)
         del self.coord_mlp
         self.act_fn = act_fn
 
@@ -127,7 +154,7 @@ class E_GCL_mask(E_GCL):
         row, col = edge_index
         trans = coord_diff * self.coord_mlp(edge_feat) * edge_mask
         agg = unsorted_segment_sum(trans, row, num_segments=coord.size(0))
-        coord += agg*self.coords_weight
+        coord += agg * self.coords_weight
         return coord
 
     def forward(self, h, edge_index, coord, node_mask, edge_mask, edge_attr=None, node_attr=None, n_nodes=None):
@@ -143,10 +170,10 @@ class E_GCL_mask(E_GCL):
 
 
 class EGNN(nn.Module):
-    def __init__(self, in_node_nf, in_edge_nf, hidden_nf, device='cpu', act_fn=nn.SiLU(), n_layers=4, coords_weight=1.0, attention=False, node_attr=1):
+    def __init__(self, in_node_nf=5, in_edge_nf=0, hidden_nf=128, act_fn=nn.SiLU(), n_layers=7, coords_weight=1.0,
+                 attention=True, node_attr=1):
         super(EGNN, self).__init__()
         self.hidden_nf = hidden_nf
-        self.device = device
         self.n_layers = n_layers
 
         self.embedding = nn.Linear(in_node_nf, hidden_nf)
@@ -156,7 +183,10 @@ class EGNN(nn.Module):
         else:
             n_node_attr = 0
         for i in range(0, n_layers):
-            self.add_module("gcl_%d" % i, E_GCL_mask(self.hidden_nf, self.hidden_nf, self.hidden_nf, edges_in_d=in_edge_nf, nodes_attr_dim=n_node_attr, act_fn=act_fn, recurrent=True, coords_weight=coords_weight, attention=attention))
+            self.add_module("gcl_%d" % i,
+                            E_GCL_mask(self.hidden_nf, self.hidden_nf, self.hidden_nf, edges_in_d=in_edge_nf,
+                                       nodes_attr_dim=n_node_attr, act_fn=act_fn, recurrent=True,
+                                       coords_weight=coords_weight, attention=attention))
 
         self.node_dec = nn.Sequential(nn.Linear(self.hidden_nf, self.hidden_nf),
                                       act_fn,
@@ -165,32 +195,42 @@ class EGNN(nn.Module):
         self.graph_dec = nn.Sequential(nn.Linear(self.hidden_nf, self.hidden_nf),
                                        act_fn,
                                        nn.Linear(self.hidden_nf, 1))
-        self.to(self.device)
 
-    def forward(self, batch_data):
-        # h0, x, edges, edge_attr, node_mask, edge_mask, n_nodes
-        x = batch_data.x
+    def forward(self, batch_data, gen_eval=False):
         pos = batch_data.pos
         batch = batch_data.batch
-        x, node_mask = to_dense_batch(x=x, batch=batch)
-        pos, _ = to_dense_batch(x=pos, batch=batch)
-        pos = pos.float()
-        atom_num = x[:, :, 0].unsqueeze(-1).float()
-        onehot_x = x[:, :, 1]
-        degree = x[:, :, 2].unsqueeze(-1).float()
-        node_mask, pair_mask = create_mask(x)
-        onehot_x = one_hot(onehot_x, num_classes=self.x_class) * node_mask
+        device = pos.device
 
-        atom_feat = torch.cat()
+        if gen_eval:
+            onehot_x = batch_data.x
+            node_mask = batch_data.node_mask
+            pair_mask = batch_data.pair_mask
+        else:
+            x = batch_data.x
+            x, node_mask = to_dense_batch(x=x, batch=batch)
+            pos, _ = to_dense_batch(x=pos, batch=batch)
+            pos = pos.float()
+            onehot_x = x[:, :, 1]
+            node_mask, pair_mask = create_mask(x)
+            onehot_x = one_hot(onehot_x, num_classes=5) * node_mask
+        edge_attr = None
 
+        batch_size, n_nodes = pos.shape[0], pos.shape[1]
 
+        h0 = onehot_x.float().reshape(batch_size * n_nodes, onehot_x.shape[2])
+        pos = pos.reshape(batch_size * n_nodes, pos.shape[2])
+        node_mask = node_mask.reshape(batch_size * n_nodes, 1)
+        edge_mask = pair_mask.reshape(batch_size * n_nodes * n_nodes, 1)
+
+        edges = get_adj_matrix(n_nodes, batch_size, device)
 
         h = self.embedding(h0)
         for i in range(0, self.n_layers):
             if self.node_attr:
-                h, _, _ = self._modules["gcl_%d" % i](h, edges, x, node_mask, edge_mask, edge_attr=edge_attr, node_attr=h0, n_nodes=n_nodes)
+                h, _, _ = self._modules["gcl_%d" % i](h, edges, pos, node_mask, edge_mask, edge_attr=edge_attr,
+                                                      node_attr=h0, n_nodes=n_nodes)
             else:
-                h, _, _ = self._modules["gcl_%d" % i](h, edges, x, node_mask, edge_mask, edge_attr=edge_attr,
+                h, _, _ = self._modules["gcl_%d" % i](h, edges, pos, node_mask, edge_mask, edge_attr=edge_attr,
                                                       node_attr=None, n_nodes=n_nodes)
 
         h = self.node_dec(h)

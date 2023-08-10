@@ -1,13 +1,13 @@
 # Basic config
 seed: 2023
-epochs: 2000
+epochs: 1
 lr: 0.0001
-batch_size: 1
+batch_size: 16
 num_workers: 4
-context: False
+context: True
 context_col: [0] # 0 - 4 or 11
 class_lr: 0.001
-class_epochs: 1000
+class_epochs: 1
 class_batch_size: 64
 
 # Train config
@@ -40,14 +40,14 @@ block_calc: True
 
 # Eval config
 valid_iter: 20
-analyze_threshold: 0
+analyze_threshold: 1000
 analyze_iter: 20
 n_samples: 40
 sample_batch_size: 2
 
 enable_tb: True
-load_ckpt: Ture
-load_ckpt_dir: ckpt/
-class_ckpt_dir: ckpt
+load_ckpt: False
+load_ckpt_dir: ckpt/2023-05-02_05-22-48_checkpoint.pt
+classifier_ckpt_dir: ckpt/05-01-10-33-43_prop_checkpoint.pt
 ckpt_dir: ckpt
 log_dir: log

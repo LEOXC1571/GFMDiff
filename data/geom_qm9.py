@@ -227,19 +227,24 @@ class GEOM_QM9(InMemoryDataset):
             train_idx, val_idx, test_idx = torch.tensor(ids[:self.train_size]), torch.tensor(
                 ids[self.train_size:self.train_size + self.valid_size]), torch.tensor(
                 ids[self.train_size + self.valid_size:])
+            split_dict = {'train': train_idx, 'valid': val_idx, 'test': test_idx}
         else:
             if task == 'gen':
                 half_train_size = int(self.train_size / 2)
                 train_idx, val_idx, test_idx = torch.tensor(ids[half_train_size:self.train_size]), torch.tensor(
                     ids[self.train_size:self.train_size + self.valid_size]), torch.tensor(
                     ids[self.train_size + self.valid_size:])
+                split_dict = {'train': train_idx, 'valid': val_idx, 'test': test_idx}
             elif task == 'prop':
                 half_train_size = int(self.train_size / 2)
-                train_idx, val_idx, test_idx = torch.tensor(ids[:half_train_size]), torch.tensor(
+                train_prop_idx, train_gen_idx, val_idx, test_idx = torch.tensor(ids[:half_train_size]), torch.tensor(
+                    ids[half_train_size:self.train_size]), torch.tensor(
                     ids[self.train_size:self.train_size + self.valid_size]), torch.tensor(
                     ids[self.train_size + self.valid_size:])
-
-        split_dict = {'train': train_idx, 'valid': val_idx, 'test': test_idx}
+                split_dict = {'train_prop': train_prop_idx, 'train_gen': train_gen_idx,
+                              'valid': val_idx, 'test': test_idx}
+            else:
+                raise ValueError("Unsupport task")
         return split_dict
 
     def mean(self, target: int) -> float:
