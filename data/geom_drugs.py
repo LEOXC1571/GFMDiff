@@ -33,10 +33,6 @@ class GEOM_Drugs(InMemoryDataset):
         self.num_conf = dataset_config['num_conf']
         super(GEOM_Drugs, self).__init__(root, transform, pre_transform)
         self.transform, self.pre_transform = transform, pre_transform
-        # self.folder = os.path.join(root, 'rdkit_folder')
-        # self.processed_root = os.path.join(root, 'molgen/geom_drugs')
-        # self.raw_url = "https://deepchemdata.s3-us-west-1.amazonaws.com/datasets/gdb9.tar.gz"
-
         self.data, self.slices = torch.load(self.processed_paths[0])
 
     @property

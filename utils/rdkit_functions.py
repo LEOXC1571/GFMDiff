@@ -4,8 +4,8 @@ from utils import get_bond_order, geom_predictor
 import torch
 import os
 
-bond_dict = [None, Chem.rdchem.BondType.SINGLE, Chem.rdchem.BondType.DOUBLE, Chem.rdchem.BondType.TRIPLE,
-                 Chem.rdchem.BondType.AROMATIC]
+bond_dict = [None, Chem.rdchem.BondType.SINGLE, Chem.rdchem.BondType.DOUBLE,
+             Chem.rdchem.BondType.TRIPLE, Chem.rdchem.BondType.AROMATIC]
 
 
 def mol2smiles(mol):

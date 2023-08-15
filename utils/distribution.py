@@ -116,3 +116,4 @@ class DistributionProperty:
         right = float(idx + 1) / n_bins * prop_range + params[0]
         val = torch.rand(1) * (right - left) + left
         return val
+    

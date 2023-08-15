@@ -196,10 +196,9 @@ class GEOM_QM9(InMemoryDataset):
 
             y = target[idx].unsqueeze(0)
             data = self.mol2graph(mol, y)
+            n = mol.GetNumAtoms()
 
-            N = mol.GetNumAtoms()
-
-            pos = suppl.GetItemText(idx).split('\n')[4:4 + N]
+            pos = suppl.GetItemText(idx).split('\n')[4:4 + n]
             pos = [[float(x) for x in line.split()[:3]] for line in pos]
             pos = torch.tensor(pos, dtype=torch.float)
 

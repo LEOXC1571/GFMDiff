@@ -1,4 +1,4 @@
-# Basic config
+
 seed: 2023
 epochs: 1
 lr: 0.0001
@@ -10,14 +10,12 @@ class_lr: 0.001
 class_epochs: 1
 class_batch_size: 64
 
-# Train config
 clip_grad: True
 ema_decay: 0.999
 include_an: True
 include_de: True
 train_subset: False
 
-# Model config
 num_layers: 3
 node_emb_dim: 129
 emb_dim: 128
@@ -28,17 +26,14 @@ dropout: 0.1
 diff_step: 500
 noise_schedule: polynomial_2
 noise_precision: 0.00001
-n_dim: 3 # dimension of data
+n_dim: 3
 pair_loss_scale: 0.0
 cutoff: 10
 calc_dl: True
-loss_weight: {
-        'degree': 0.01
-}
+loss_weight: {'degree': 0.01}
 add_time: False
 block_calc: True
 
-# Eval config
 valid_iter: 20
 analyze_threshold: 1000
 analyze_iter: 20
@@ -47,7 +42,7 @@ sample_batch_size: 2
 
 enable_tb: True
 load_ckpt: False
-load_ckpt_dir: ckpt/2023-05-02_05-22-48_checkpoint.pt
-classifier_ckpt_dir: ckpt/05-01-10-33-43_prop_checkpoint.pt
+load_ckpt_dir: ckpt/
+classifier_ckpt_dir: ckpt/
 ckpt_dir: ckpt
 log_dir: log

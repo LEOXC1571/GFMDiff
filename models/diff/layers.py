@@ -59,7 +59,7 @@ class DistDecoder(nn.Module):
 
 
 class NodeTransformerLayer(nn.Module):
-    def __init__(self, emb_dim, ffn_dim, num_heads, dropout, act_dropout=None, attn_dropout=None, q_noise=0., qn_block_size=8):
+    def __init__(self, emb_dim, ffn_dim, num_heads, dropout, act_dropout=None, attn_dropout=None):
         super(NodeTransformerLayer, self).__init__()
         self.emb_dim = emb_dim
         self.num_heads = num_heads
@@ -89,11 +89,11 @@ class NodeTransformerLayer(nn.Module):
         k_e = self.k_e_proj(pair_emb).reshape(batch_size, n_nodes, n_nodes, self.num_heads,
                                               self.head_dim).permute(0, 3, 1, 2, 4)
 
-        q = q.unsqueeze(3)  # (batch_size, num_heads, n_nodes, 1, head_dim)
-        k_n = k_n.unsqueeze(2)  # (batch_size, num_heads, 1, n_nodes, head_dim)
-        k = k_n + k_e   # (batch_size, num_heads, n_nodes, n_nodes, head_dim)
+        q = q.unsqueeze(3)
+        k_n = k_n.unsqueeze(2)
+        k = k_n + k_e
 
-        attn_weight = torch.matmul(q, k.permute([0, 1, 2, 4, 3])).reshape(batch_size, self.num_heads, n_nodes, n_nodes)    # (batch_size, num_heads, n_nodes, n_nodes)
+        attn_weight = torch.matmul(q, k.permute([0, 1, 2, 4, 3])).reshape(batch_size, self.num_heads, n_nodes, n_nodes)
         attn_weight += (1 - pair_mask.permute(0, 3, 1, 2)) * (-1e6)
         attn_prob = nn.functional.softmax(attn_weight, dim=3).unsqueeze(3)
         return attn_prob
@@ -143,21 +143,20 @@ class PairTransformerLayer(nn.Module):
         pair_emb = self.ln(pair_emb)
 
         q = self.q_proj(pair_emb).reshape(batch_size, n_nodes, n_nodes, self.num_heads,
-                                          self.head_dim).permute(0, 1, 3, 2, 4)     # (B, N, h, N, d)
+                                          self.head_dim).permute(0, 1, 3, 2, 4)
         q *= (1 / self.head_dim ** 0.5)
         q = q.unsqueeze(-2)     # (B, N, h, N, 1, d)
 
         k = self.k_proj(pair_emb).reshape(batch_size, n_nodes, n_nodes, self.num_heads,
-                                          self.head_dim).permute(0, 1, 3, 4, 2)     # (B, N, h, d, N)
+                                          self.head_dim).permute(0, 1, 3, 4, 2)
         k = k.unsqueeze(-3)     # (B, N, h, 1, d, N)
 
         attn_prob = torch.matmul(q, k).squeeze(-2)   # (B, N, h, N, 1, N)
         attn_prob = nn.functional.softmax(attn_prob, dim=4)
         attn_prob = self.attn_dropout(attn_prob)
 
-
         v = self.v_proj(pair_emb).reshape(batch_size, n_nodes, n_nodes, self.num_heads,
-                                          self.head_dim).permute(0, 1, 3, 2, 4)        # (B, N, h, N, d)
+                                          self.head_dim).permute(0, 1, 3, 2, 4)
         output = torch.matmul(attn_prob, v).permute(0, 1, 3, 2, 4).reshape(batch_size, n_nodes, n_nodes, self.emb_dim)
         output = self.out_proj(output) * pair_mask
         return output
@@ -179,7 +178,7 @@ class Low2High(nn.Module):
         b, c, d, r = left_act.size()
         left_act = left_act.reshape([b, c*d, r])
         right_act = right_act.reshape([b, r, c * d])
-        act = torch.matmul(left_act, right_act).reshape([b, c, d, d, c]).permute(0, 1, 4, 2, 3).reshape([b, c, c, d * d])
+        act = torch.matmul(left_act, right_act).reshape([b, c, d, d, c]).permute(0, 1, 4, 2, 3).reshape([b, c, c, d*d])
         act = self.lin_cat(act)
         return act
 
@@ -307,7 +306,8 @@ class PosUpdate(nn.Module):
 
 
 class InterBlock(nn.Module):
-    def __init__(self, emb_dim, hidden_dim, num_heads, dropout, node_dropout=None, pair_dropout=None, dataset_name='qm9'):
+    def __init__(self, emb_dim, hidden_dim, num_heads, dropout, node_dropout=None,
+                 pair_dropout=None, dataset_name='qm9'):
         super(InterBlock, self).__init__()
         self.emb_dim = emb_dim
         self.num_heads = num_heads

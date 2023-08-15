@@ -63,6 +63,3 @@ class NoiseSchedule(nn.Module):
     def forward(self, t):
         t_int = torch.round(t * self.timestep).long()
         return self.gamma[t_int]
-
-
-

@@ -10,7 +10,6 @@ import wandb
 start_time = time.strftime('%m-%d-%H-%M-%S', time.localtime())
 
 import warnings
-from tqdm import tqdm
 from rdkit import Chem
 from rdkit.Chem import Draw
 
@@ -21,7 +20,7 @@ import torch.multiprocessing as mp
 from torch.nn.parallel import DistributedDataParallel
 
 from models import model_map
-from evaluator import analyze_stability_for_molecules, check_stability
+from evaluator import check_stability
 from utils import init_seeds, BasicMolecularMetrics
 import utils.visualization as vis
 

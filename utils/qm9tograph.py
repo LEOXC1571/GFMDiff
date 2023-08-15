@@ -1,7 +1,5 @@
-
 import numpy as np
 from rdkit import Chem
-
 import torch
 from torch_geometric.data import Data
 
@@ -22,7 +20,7 @@ allowable_features = {
                   Chem.rdchem.BondType.TRIPLE,
                   Chem.rdchem.BondType.AROMATIC
                   ],
-    'bond_dirs': [  # only for double bond stereo information
+    'bond_dirs': [
         Chem.rdchem.BondDir.NONE,
         Chem.rdchem.BondDir.ENDUPRIGHT,
         Chem.rdchem.BondDir.ENDDOWNRIGHT
@@ -30,12 +28,11 @@ allowable_features = {
     'bond_isconjugated': [False, True],
     'bond_inring': [False, True],
     'bond_stereo': ["STEREONONE", "STEREOANY", "STEREOZ", "STEREOE", "STEREOCIS", "STEREOTRANS"]
-}   # 27
+}
 
 atom_dic = [len(allowable_features['atomic_num']), len(allowable_features['formal_charge']),
             len(allowable_features['chirality']), len(allowable_features['numH']),
             len(allowable_features['valence']), len(allowable_features['degree'])]
-
 atom_cumsum = np.cumsum(atom_dic)
 
 fm_c = [-1, 0, 1]
@@ -43,8 +40,7 @@ degree = [1, 2, 3, 4, 5]
 nh = [0, 1, 2, 3, 4]
 chirality = [Chem.rdchem.ChiralType.CHI_UNSPECIFIED, Chem.rdchem.ChiralType.CHI_TETRAHEDRAL_CW,
              Chem.rdchem.ChiralType.CHI_TETRAHEDRAL_CCW]
-hybrid = [Chem.rdchem.HybridizationType.UNSPECIFIED
-          ]
+hybrid = [Chem.rdchem.HybridizationType.UNSPECIFIED]
 iv = [0, 1, 2, 3]
 
 

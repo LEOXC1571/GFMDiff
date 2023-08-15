@@ -323,7 +323,7 @@ def main(rank, world_size, args):
     if model_config['enable_tb']:
         tb_writer.close()
     torch.distributed.destroy_process_group()
-    print("Finished traning!")
+    print("Finished training!")
 
 
 if __name__ == "__main__":

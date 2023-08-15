@@ -1,5 +1,3 @@
-
-
 import torch
 from torch_geometric.data import Data
 from utils import get_bond_order

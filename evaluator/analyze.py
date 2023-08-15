@@ -1,11 +1,3 @@
-# !/usr/bin/env python
-# -*- Coding: utf-8 -*-
-
-# @Filename: analyze.py
-# @Author: Leo Xu
-# @Date: 2022/12/5 15:48
-# @Email: leoxc1571@163.com
-# Description:
 
 import torch
 import numpy as np

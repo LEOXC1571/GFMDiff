@@ -35,7 +35,8 @@ def save_xyz_file(path, one_hot, charges, positions, dataset_info, id_from=0, na
         for atom_i in range(n_atoms):
             atom = atoms[atom_i]
             atom = dataset_info['atom_decoder'][atom]
-            f.write("%s %.9f %.9f %.9f\n" % (atom, positions[batch_i, atom_i, 0], positions[batch_i, atom_i, 1], positions[batch_i, atom_i, 2]))
+            f.write("%s %.9f %.9f %.9f\n" % (atom, positions[batch_i, atom_i, 0], positions[batch_i, atom_i, 1],
+                                             positions[batch_i, atom_i, 2]))
         f.close()
 
 
@@ -353,7 +354,3 @@ def visualize_chain_uncertainty(
 
     if wandb is not None:
         wandb.log({mode: [wandb.Video(gif_path, caption=gif_path)]})
-
-
-if __name__ == '__main__':
-    pass

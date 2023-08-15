@@ -16,7 +16,6 @@ def construct_mol(x, A, atomic_num_list):
     for atom in atoms:
         mol.AddAtom(Chem.Atom(int(atomic_num_list[atom])))
 
-    # A (edge_type, num_node, num_node)
     adj = np.argmax(A, axis=0)
     adj = np.array(adj)
     adj = adj[atoms_exist, :][:, atoms_exist]
@@ -39,11 +38,6 @@ def construct_mol(x, A, atomic_num_list):
 
 
 def check_valency(mol):
-    """
-    Checks that no atoms in the mol have exceeded their possible
-    valency
-    :return: True if no valency issues, False otherwise
-    """
     try:
         Chem.SanitizeMol(mol, sanitizeOps=Chem.SanitizeFlags.SANITIZE_PROPERTIES)
         return True, None
@@ -87,7 +81,7 @@ def valid_mol_can_with_seg(x, largest_connected_comp=True):
     sm = Chem.MolToSmiles(x, isomericSmiles=True)
     mol = Chem.MolFromSmiles(sm)
     if largest_connected_comp and '.' in sm:
-        vsm = [(s, len(s)) for s in sm.split('.')]  # 'C.CC.CCc1ccc(N)cc1CCC=O'.split('.')
+        vsm = [(s, len(s)) for s in sm.split('.')]
         vsm.sort(key=lambda tup: tup[1], reverse=True)
         mol = Chem.MolFromSmiles(vsm[0][0])
     return mol

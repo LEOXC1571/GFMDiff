@@ -1,5 +1,5 @@
 
-from .gnn import EquiGNN
+from .dtn import EquiGNN
 from .noise import NoiseSchedule, alpha, sigma, snr
 from .loss import gaussian_kl, cdf_standard_gaussian
 from .utils import create_mask, sigma_and_alpha_t_given_s, remove_mean_with_mask, \

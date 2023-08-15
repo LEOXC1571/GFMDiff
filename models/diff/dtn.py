@@ -1,5 +1,3 @@
-
-
 import torch
 import torch.nn as nn
 import numpy as np
@@ -85,31 +83,35 @@ class EquiGNN(nn.Module):
             pair_emb = self.edge_emb(radial)
         else:
             pair_emb = self.edge_emb(radial, xh_time.unsqueeze(-1) * pair_mask)
-        pair_emb = self.node_pair_fuse(torch.cat([xh_emb.unsqueeze(1) * pair_mask,  xh_emb.unsqueeze(2) * pair_mask,
-                                                  pair_emb], dim=3))
+        pair_emb = self.node_pair_fuse(torch.cat([xh_emb.unsqueeze(1) * pair_mask,
+                                                  xh_emb.unsqueeze(2) * pair_mask, pair_emb], dim=3))
 
         angle = local_geometry_calc(pos, pair_mask)
         if not self.add_time:
             tri_emb = self.act(self.angle_emb(angle))
         else:
             triplet_mask = pair_mask.permute(0, 1, 3, 2) * node_mask.unsqueeze(1)
-            diag = torch.ones((node_mask.shape[1], node_mask.shape[1], node_mask.shape[1]), device=node_mask.device) - torch.eye(node_mask.shape[1], device=node_mask.device)
+            diag = (torch.ones((node_mask.shape[1], node_mask.shape[1], node_mask.shape[1]), device=node_mask.device) -
+                    torch.eye(node_mask.shape[1], device=node_mask.device))
             triplet_mask = triplet_mask * diag
             tri_emb = self.act(self.angle_emb(angle, xh_time.unsqueeze(-1) * triplet_mask))
         for layer in self.convs:
             pair_emb = pair_emb * pair_mask
-            xh_emb, pair_emb, pos = layer(xh_emb, pair_emb, pos, coord_diff, node_mask, pair_mask, batch_size, max_node, tri_emb=tri_emb)
+            xh_emb, pair_emb, pos = layer(xh_emb, pair_emb, pos, coord_diff, node_mask, pair_mask, batch_size,
+                                          max_node, tri_emb=tri_emb)
             _, radial, coord_diff = atom_pos_to_pair_dist(pos)
             if self.block_calc:
                 angle = local_geometry_calc(pos, pair_mask)
                 if self.add_time:
-                    tri_emb = self.act(self.trip_emb_fuse(torch.cat([self.angle_emb(angle, xh_time.unsqueeze(-1) * triplet_mask), tri_emb], dim=4)))
-                    pair_emb = self.act(self.edge_emb_fuse(torch.cat([self.edge_emb(radial, xh_time.unsqueeze(-1)*pair_mask), pair_emb], dim=3)))
+                    tri_emb = self.act(self.trip_emb_fuse(torch.cat(
+                        [self.angle_emb(angle, xh_time.unsqueeze(-1) * triplet_mask), tri_emb], dim=4)))
+                    pair_emb = self.act(self.edge_emb_fuse(torch.cat(
+                        [self.edge_emb(radial, xh_time.unsqueeze(-1)*pair_mask), pair_emb], dim=3)))
                 else:
                     tri_emb = self.act(self.trip_emb_fuse(torch.cat([self.angle_emb(angle), tri_emb], dim=4)))
                     pair_emb = self.act(self.edge_emb_fuse(torch.cat([self.edge_emb(radial), pair_emb], dim=3)))
-            pair_emb = self.node_pair_fuse(torch.cat([xh_emb.unsqueeze(1) * pair_mask,  xh_emb.unsqueeze(2) * pair_mask,
-                                                      pair_emb], dim=3))
+            pair_emb = self.node_pair_fuse(torch.cat(
+                [xh_emb.unsqueeze(1) * pair_mask,  xh_emb.unsqueeze(2) * pair_mask, pair_emb], dim=3))
 
         xh_emb = self.xh_embedding_out(xh_emb) * node_mask
         xh_final = xh_emb[:, :, :self.node_nf]
