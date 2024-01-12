@@ -1,9 +1,9 @@
 
 import os
 # Use only one GPU
-os.environ['CUDA_VISIBLE_DEVICES'] = '2'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 os.environ['MASTER_ADDR'] = 'localhost'
-os.environ['MASTER_PORT'] = '10125'
+os.environ['MASTER_PORT'] = '12345'
 import yaml
 import time
 import argparse
@@ -153,8 +153,10 @@ def main_quality(rank, world_size, args):
 
     dist.barrier()
     print('Analyzing...') if rank == 0 else None
+    print(time.strftime('%m-%d-%H-%M-%S', time.localtime()))
     validity, rdkit_metrics, rdkit_unique = analyze(model, model_config, dataset_config, device,
-                                                    n_samples=10000/world_size, batch_size=50, rank=rank)
+                                                    n_samples=50/world_size, batch_size=50, rank=rank)
+    print(time.strftime('%m-%d-%H-%M-%S', time.localtime()))
     validity, rdkit_metrics = validity.to(device), rdkit_metrics.to(device)
     validity_gather_list = [torch.zeros_like(validity) for _ in range(world_size)]
     rdkit_gather_list = [torch.zeros_like(rdkit_metrics) for _ in range(world_size)]

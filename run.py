@@ -1,8 +1,8 @@
 
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '6,7'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
 os.environ['MASTER_ADDR'] = 'localhost'
-os.environ['MASTER_PORT'] = '18017'
+os.environ['MASTER_PORT'] = '12123'
 import yaml
 import time
 import copy
@@ -94,6 +94,7 @@ def analyze(model, model_config, dataset_config, device, disable_tqdm, prop_dist
     batch_size = min(batch_size, n_samples)
     molecules = {'pos': [], 'onehot': [], 'node_mask': []}
     tqdm_bar = tqdm(range(int(n_samples / batch_size)), desc="Iteration", disable=disable_tqdm)
+    print(time.strftime('%Y-%m-%d_%H-%M-%S_', time.localtime()))
     for i in tqdm_bar:
         with torch.no_grad():
             pos, onehot, atom_num, degree, node_mask = model.module.sample(batch_size, dataset_config['max_n_nodes'],
@@ -103,6 +104,7 @@ def analyze(model, model_config, dataset_config, device, disable_tqdm, prop_dist
             molecules['node_mask'].append(node_mask.detach().cpu())
     molecules = {key: torch.cat(molecules[key], dim=0) for key in molecules}
     validity, rdkit_metrics, rdkit_unique = analyze_stability_for_molecules(molecules, dataset_config)
+    print(time.strftime('%Y-%m-%d_%H-%M-%S_', time.localtime()))
     return validity, rdkit_metrics, rdkit_unique
 
 

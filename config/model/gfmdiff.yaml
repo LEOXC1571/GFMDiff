@@ -4,7 +4,7 @@ epochs: 1
 lr: 0.0001
 batch_size: 16
 num_workers: 4
-context: True
+context: False
 context_col: [0] # 0 - 4 or 11
 class_lr: 0.001
 class_epochs: 1
@@ -16,10 +16,10 @@ include_an: True
 include_de: True
 train_subset: False
 
-num_layers: 3
+num_layers: 5
 node_emb_dim: 129
-emb_dim: 128
-hidden_dim: 256
+emb_dim: 256
+hidden_dim: 512
 num_heads: 8
 loss_type: l2
 dropout: 0.1
@@ -37,7 +37,7 @@ block_calc: True
 valid_iter: 20
 analyze_threshold: 1000
 analyze_iter: 20
-n_samples: 40
+n_samples: 100
 sample_batch_size: 2
 
 enable_tb: True
