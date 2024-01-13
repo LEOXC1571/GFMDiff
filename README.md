@@ -2,7 +2,7 @@
 <p align="center">
     <a href="https://arxiv.org/abs/2401.02683"><img src="https://img.shields.io/badge/arXiv-2401.02683-b31b1b.svg" alt="Paper"></a>
     <a href="https://github.com/LEOXC1571/GFMDiff"><img src="https://img.shields.io/badge/-Github-grey?logo=github" alt="Github"></a>
-    <a href="https://arxiv.org/abs/2401.02683"> <img alt="License" src="https://img.shields.io/static/v1?label=Pub&message=AAAI%2724&color=orange"> </a>
+    <a href="https://arxiv.org/abs/2401.02683"> <img alt="Pub" src="https://img.shields.io/static/v1?label=Pub&message=AAAI%2724&color=orange"> </a>
     <a href="https://github.com/LEOXC1571/GFMDiff/blob/main/LICENSE"> <img alt="License" src="https://img.shields.io/github/license/LFhase/CIGA?color=blue"> </a>
 
 [//]: # (    <a href="https://neurips.cc/virtual/2022/poster/54643"> <img src="https://img.shields.io/badge/Video-grey?logo=Kuaishou&logoColor=white" alt="Video"></a>)
